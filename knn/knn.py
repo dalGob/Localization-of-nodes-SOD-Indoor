@@ -18,10 +18,13 @@ from sklearn.decomposition import PCA
 MIN_NEIGHBOURS = 25
 MAX_NEIGHBOURS = 50
 
+irrelevant_features = ['ECoord', 'NCoord', 'FloorID', 'BuildingID', 'SceneID', 'UserID', 'PhoneID', 'SampleTimes']
+
+output_variables = ['ECoord', 'NCoord']
 
 print("Dataset HCXY")
-train = pd.read_csv("./Training_CETC331.csv")
-test = pd.read_csv("./Testing_CETC331.csv")
+train = pd.read_csv("./CETC331/Training_CETC331.csv")
+test = pd.read_csv("./CETC331/Testing_CETC331.csv")
 
 # Convert all values of "100" to "-100"
 train = train.replace(100, -100)
@@ -29,19 +32,15 @@ test = test.replace(100, -100)
 
 
 # Set the data up so ECoord and NCoord are removed from the dataset in X, and are isolated as the only columns in y.
-X = train.drop("ECoord", axis=1)
-X = X.drop("NCoord", axis=1)
-X = X.drop("FloorID", axis=1)
+X = train.drop(irrelevant_features, axis=1)
 X_train = X.values
-y = train[["ECoord", "NCoord", "FloorID"]]
+y = train[output_variables]
 y_train = y.values
 
 # Do the same as above on the testing data
-X = test.drop("ECoord", axis=1)
-X = X.drop("NCoord", axis=1)
-X = X.drop("FloorID", axis=1)
+X = test.drop(irrelevant_features, axis=1)
 X_test = X.values
-y = test[["ECoord", "NCoord", "FloorID"]]
+y = test[output_variables]
 y_test = y.values
 
 # Adding PCA seems to make the model much worse
@@ -54,81 +53,72 @@ y_test = y.values
 # print(X_test.shape)
 
 # Hyperparameter tuning for the number of neighbours
-parameters = {"n_neighbors": range(MIN_NEIGHBOURS, MAX_NEIGHBOURS)}
-gridsearch = GridSearchCV(KNeighborsRegressor(), parameters, cv=5, scoring="neg_root_mean_squared_error")
-gridsearch.fit(X_train, y_train)
-print("Best Hyperparameters:")
-print(gridsearch.best_params_)
+# parameters = {"n_neighbors": range(MIN_NEIGHBOURS, MAX_NEIGHBOURS)}
+# gridsearch = GridSearchCV(KNeighborsRegressor(), parameters, cv=5, scoring="neg_root_mean_squared_error")
+# gridsearch.fit(X_train, y_train)
+# print("Best Hyperparameters:")
+# print(gridsearch.best_params_)
 
 
 # See how the best hyperparameters affects the model
-train_preds_grid = gridsearch.predict(X_train)
-train_mse = mean_squared_error(y_train, train_preds_grid)
-train_rmse = sqrt(train_mse)
-train_r2 = r2_score(y_train, train_preds_grid)
-test_preds_grid = gridsearch.predict(X_test)
-test_mse = mean_squared_error(y_test, test_preds_grid)
-test_rmse = sqrt(test_mse)
-test_r2 = r2_score(y_test, test_preds_grid)
-print("\nBest Hyperparameter Training RMSE:")
-print(train_rmse)
-print("Best Hyperparameter Training MSE:")
-print(train_mse)
-print("Best Hyperparameter Training R^2:")
-print(train_r2)
-print("\nBest Hyperparameter Testing RMSE")
-print(test_rmse)
-print("Best Hyperparameter Testing MSE")
-print(test_mse)
-print("Best Hyperparameter Testing R^2:")
-print(test_r2)
+# train_preds_grid = gridsearch.predict(X_train)
+# train_mse = mean_squared_error(y_train, train_preds_grid)
+# train_rmse = sqrt(train_mse)
+# train_r2 = r2_score(y_train, train_preds_grid)
+# test_preds_grid = gridsearch.predict(X_test)
+# test_mse = mean_squared_error(y_test, test_preds_grid)
+# test_rmse = sqrt(test_mse)
+# test_r2 = r2_score(y_test, test_preds_grid)
+# print("\nBest Hyperparameter Training RMSE:")
+# print(train_rmse)
+# print("Best Hyperparameter Training MSE:")
+# print(train_mse)
+# print("Best Hyperparameter Training R^2:")
+# print(train_r2)
+# print("\nBest Hyperparameter Testing RMSE")
+# print(test_rmse)
+# print("Best Hyperparameter Testing MSE")
+# print(test_mse)
+# print("Best Hyperparameter Testing R^2:")
+# print(test_r2)
 
 
 # Calculate the best hyperparameter again using a weighted average instead of a regular average
-parameters = {
-    "n_neighbors": range(MIN_NEIGHBOURS, MAX_NEIGHBOURS),
-    "weights": ["uniform", "distance"],
-}
-gridsearch = GridSearchCV(KNeighborsRegressor(), parameters)
-gridsearch.fit(X_train, y_train)
-print("\nWeighted Average Best Parameters:")
-print(gridsearch.best_params_)
-test_preds_grid = gridsearch.predict(X_test)
-r_squared = r2_score(y_test, test_preds_grid)
-test_mse = mean_squared_error(y_test, test_preds_grid)
-test_rmse = sqrt(test_mse)
-print("\nWeighted Average Testing RMSE:")
-print(test_rmse)
-print("Weighted Average Testing MSE:")
-print(test_mse)
-print("R^2 Error:")
-print(r_squared)
+# parameters = {
+#     "n_neighbors": range(MIN_NEIGHBOURS, MAX_NEIGHBOURS),
+#     "weights": ["uniform", "distance"],
+# }
+# gridsearch = GridSearchCV(KNeighborsRegressor(), parameters)
+# gridsearch.fit(X_train, y_train)
+# print("\nWeighted Average Best Parameters:")
+# print(gridsearch.best_params_)
+# test_preds_grid = gridsearch.predict(X_test)
+# r_squared = r2_score(y_test, test_preds_grid)
+# test_mse = mean_squared_error(y_test, test_preds_grid)
+# test_rmse = sqrt(test_mse)
+# print("\nWeighted Average Testing RMSE:")
+# print(test_rmse)
+# print("Weighted Average Testing MSE:")
+# print(test_mse)
+# print("R^2 Error:")
+# print(r_squared)
 
 
 # Use bagging
 
-best_k = gridsearch.best_params_["n_neighbors"]
-best_weights = gridsearch.best_params_["weights"]
-bagged_knn = KNeighborsRegressor(
-    # n_neighbors=best_k, weights=best_weights
-)
+# best_k = gridsearch.best_params_["n_neighbors"]
+# best_weights = gridsearch.best_params_["weights"]
+knn = KNeighborsRegressor()
 
-bagging_model = BaggingRegressor(
-    estimator=bagged_knn
-)
+bagging_model = BaggingRegressor(estimator=knn)
 
 # bagged_knn = BaggingRegressor(base_estimator=bagged_knn)
-params = {
-    # 'base_estimator__n_neighbours': range(MIN_NEIGHBOURS, MAX_NEIGHBOURS),
-    'n_estimators': [10, 50, 100],
-    'max_samples': [0.5, 0.75, 1.0]
-}
+params = {'n_estimators': [10, 50, 100], 'max_samples': [0.5, 0.75, 1.0]}
 
-gridsearch = GridSearchCV(bagged_knn, params, cv=5, scoring="neg_root_mean_squared_error")
+gridsearch = GridSearchCV(bagging_model, params, cv=5, scoring="neg_root_mean_squared_error")
 gridsearch.fit(X_train, y_train)
 
-bagging_model.fit(X_train, y_train)
-test_preds_grid = bagging_model.predict(X_test)
+test_preds_grid = gridsearch.predict(X_test)
 test_mse = mean_squared_error(y_test, test_preds_grid)
 test_rmse = sqrt(test_mse)
 test_R2 = r2_score(y_test, test_preds_grid)
@@ -174,16 +164,11 @@ X_test_random = X_test[random_indices]
 y_pred_random = gridsearch.predict(X_test_random)
 
 y_test_random = y_test[random_indices]
-
-y_test_random = pd.DataFrame(data=y_test_random[1:,1:],    # values
-                index=y_test_random[1:,0],    # 1st column as index
-                columns=y_test_random[0,1:])
-
 # Preparing the visualization
 plt.figure(figsize=(10, 10))
 cmap = plt.cm.get_cmap('viridis', 100)
 
-for i, (true, pred) in enumerate(zip(y_test_random.values, y_pred_random)):
+for i, (true, pred) in enumerate(zip(y_test_random, y_pred_random)):
         color = cmap(i)
         plt.plot([true[0], pred[0]], [true[1], pred[1]], '-', alpha=0.6, color=color)
         plt.plot(pred[0], pred[1], 'o', markersize=5, color=color)
